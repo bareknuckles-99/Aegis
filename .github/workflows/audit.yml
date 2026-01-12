@@ -1,0 +1,47 @@
+name: Aegis AI Audit & Exploit
+on:
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: 'Target GitHub URL'
+        required: true
+
+permissions:
+  contents: write  # Crucial: Allows the bot to save files back to your repo
+
+jobs:
+  engineer-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install google-genai
+
+      - name: Clone Target Repo
+        run: git clone ${{ github.event.inputs.target_repo }} target_folder
+
+      - name: Run Aegis Logic
+        id: aegis_logic
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          # We use "tee" to save the output to a file and print it simultaneously
+          python aegis.py --path ./target_folder | tee audit_result.md
+
+      - name: Commit Report to Repo
+        run: |
+          git config --global user.name "Aegis-Bot"
+          git config --global user.email "aegis-bot@users.noreply.github.com"
+          
+          # Move the generated report to the root
+          cp audit_result.md latest_report.md
+          
+          git add latest_report.md
+          git commit -m "New Audit Result: ${{ github.event.inputs.target_repo }}" || echo "No changes to commit"
+          git push
