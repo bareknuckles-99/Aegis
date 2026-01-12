@@ -6,9 +6,6 @@ on:
         description: 'Target GitHub URL'
         required: true
 
-permissions:
-  contents: write  # Crucial: Allows the bot to save files back to your repo
-
 jobs:
   engineer-audit:
     runs-on: ubuntu-latest
@@ -31,17 +28,14 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          # We use "tee" to save the output to a file and print it simultaneously
-          python aegis.py --path ./target_folder | tee audit_result.md
+          # Save outputs to local files in the runner
+          python aegis.py --path ./target_folder > audit_report.md
+          # Assuming your python script creates exploit.t.sol
 
-      - name: Commit Report to Repo
-        run: |
-          git config --global user.name "Aegis-Bot"
-          git config --global user.email "aegis-bot@users.noreply.github.com"
-          
-          # Move the generated report to the root
-          cp audit_result.md latest_report.md
-          
-          git add latest_report.md
-          git commit -m "New Audit Result: ${{ github.event.inputs.target_repo }}" || echo "No changes to commit"
-          git push
+      - name: Upload Audit Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-results
+          path: |
+            audit_report.md
+            exploit.t.sol
