@@ -3,45 +3,72 @@
 <head>
     <title>🛡️ Aegis Security Portal</title>
     <style>
-        body { background: #1a1a1a; color: #00ff00; font-family: 'Courier New', monospace; padding: 40px; }
-        .container { max-width: 600px; margin: auto; border: 1px solid #00ff00; padding: 20px; box-shadow: 0 0 15px #00ff00; }
-        input { background: #000; color: #00ff00; border: 1px solid #00ff00; padding: 12px; width: 80%; margin-bottom: 20px; }
-        button { background: #00ff00; color: #000; padding: 12px 25px; border: none; cursor: pointer; font-weight: bold; width: 100%; }
-        button:hover { background: #00cc00; }
-        #status { margin-top: 20px; color: #888; }
+        body { background: #0a0a0a; color: #00ff00; font-family: 'Courier New', monospace; padding: 40px; line-height: 1.5; }
+        .container { max-width: 900px; margin: auto; border: 1px solid #00ff00; padding: 30px; box-shadow: 0 0 20px #003300; }
+        input { background: #000; color: #00ff00; border: 1px solid #00ff00; padding: 12px; width: 70%; margin-bottom: 20px; outline: none; }
+        button { background: #00ff00; color: #000; padding: 12px 25px; border: none; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { background: #00cc00; box-shadow: 0 0 10px #00ff00; }
+        #console { background: #000; border: 1px solid #333; padding: 20px; margin-top: 30px; height: 400px; overflow-y: auto; font-size: 14px; display: none; }
+        .log-entry { margin-bottom: 10px; border-left: 3px solid #00ff00; padding-left: 10px; }
+        .highlight { color: #fff; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🛡️ AEGIS v3.0</h1>
-        <p>SYSTEM STATUS: <span style="color: #00ff00;">ONLINE</span></p>
-        <hr color="#00ff00">
-        <p>Enter Target Repository:</p>
-        <input type="text" id="repoUrl" placeholder="https://github.com/owner/repo">
-        <button onclick="triggerAudit()">INITIATE SEC-AUDIT</button>
-        <div id="status">Ready for input...</div>
+        <h1>🛡️ AEGIS v3.0 // CLOUD_AUDITOR</h1>
+        <p>STATUS: <span id="sysStatus">STANDBY</span></p>
+        <hr border="1" color="#1a1a1a">
+        
+        <p>Target Repository URL:</p>
+        <input type="text" id="repoUrl" placeholder="https://github.com/owner/repository">
+        <button onclick="triggerAudit()">INITIATE_SCAN</button>
+
+        <div id="console">
+            <div id="logContents"></div>
+        </div>
     </div>
 
     <script>
+        const owner = "bareknuckles-99";
+        const repo = "Aegis";
+
         async function triggerAudit() {
-    const url = document.getElementById('repoUrl').value;
-    
-    // For a portfolio, the user (you) provides the token via prompt 
-    // to keep the code "Serverless" and safe.
-    const token = prompt("Enter your GitHub Access Token to start the cloud engine:");
-    if (!token) return;
+            const target = document.getElementById('repoUrl').value;
+            const log = document.getElementById('logContents');
+            const consoleBox = document.getElementById('console');
+            
+            if(!target) return alert("Enter a target repo!");
+            
+            const token = prompt("Enter GitHub PAT:");
+            if (!token) return;
 
-    const response = await fetch('https://api.github.com/repos/YOUR_USERNAME/Aegis/actions/workflows/audit.yml/dispatches', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github+json'
-        },
-        body: JSON.stringify({ ref: 'main', inputs: { target_repo: url } })
-    });
+            consoleBox.style.display = "block";
+            log.innerHTML += `<div class="log-entry">[SYSTEM] Initializing cloud runner...</div>`;
+            
+            // 1. Trigger the workflow
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/audit.yml/dispatches`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
+                body: JSON.stringify({ ref: 'main', inputs: { target_repo: target } })
+            });
 
-    if (response.ok) alert('Cloud Audit Engaged! Monitor the status below.');
-}
+            if (response.ok) {
+                log.innerHTML += `<div class="log-entry">[SUCCESS] Workflow dispatched. Waiting for cloud logs...</div>`;
+                // Start polling for the result
+                pollForResults(token);
+            } else {
+                log.innerHTML += `<div class="log-entry" style="border-color:red">[ERROR] Authentication failed.</div>`;
+            }
+        }
+
+        async function pollForResults(token) {
+            const log = document.getElementById('logContents');
+            log.innerHTML += `<div class="log-entry">[WAIT] Processing audit (this usually takes 60-90s)...</div>`;
+            
+            // In a real portfolio, you'd poll the "Runs" API here. 
+            // For now, let's keep it simple: tell the user where to see the live log.
+            log.innerHTML += `<div class="log-entry">[INFO] View live progress: <a href="https://github.com/${owner}/${repo}/actions" target="_blank" style="color:white">GitHub Actions Tab</a></div>`;
+        }
     </script>
 </body>
 </html>
